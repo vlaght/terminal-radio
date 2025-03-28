@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "terminal-radio"
-version = "0.1.0"
+version = "0.0.1"
 description = "A terminal-based internet radio player"
 authors = ["Vladislav Boiko <vl4gh7@gmail.com>"]
 packages = [{include = "terminal_radio"}]
@@ -8,11 +8,13 @@ packages = [{include = "terminal_radio"}]
 [tool.poetry.dependencies]
 python = "^3.10"
 textual = "^0.52.1"
-python-vlc = "^3.0.20123"
+sounddevice = "^0.4.6"
+torch = "^2.0.0"
+numpy = "^2.2.4"
 
 [tool.poetry.scripts]
-radio = "terminal_radio.__main__:main"
+terminal-radio = "terminal_radio.app:main"
 
 [build-system]
-requires = ["poetry-core>=1.0.0"]
+requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"

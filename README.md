@@ -2,62 +2,63 @@
 
 # Terminal Radio Player
 
-A cross-platform terminal-based internet radio player.
-
-## Features
-
-- **Station Lists Management**: Full CRUD functionality for managing radio stations.
-- **Playback Control**: Start and stop playback using visual buttons and hotkeys.
-- **Volume Control**: Adjust volume through visual sliders and hotkeys.
-- **User Space Installation**: Easily installable as an application for distribution.
+A terminal-based internet radio player with station management and volume control, written by copilot slop mostly
 
 ## Installation
 
-### Prerequisites
+### Using Nix
 
-First, install MPV for your platform:
+If you have Nix with flakes enabled:
 
-#### macOS
 ```bash
-brew install mpv
+# Install directly
+nix profile install github:vlaght/terminal-radio
+
+# Or try without installing
+nix run github:vlaght/terminal-radio
 ```
 
-#### Linux (Debian/Ubuntu)
+### Development Setup
+
+1. Clone the repository:
 ```bash
-sudo apt update
-sudo apt install mpv libmpv-dev
+git clone https://github.com/vlaght/terminal-radio.git
+cd terminal-radio
 ```
 
-#### Linux (Fedora)
+2. Using Nix:
 ```bash
-sudo dnf install mpv mpv-devel
-```
+# Enter development shell
+nix develop
 
-#### Windows
-```bash
-choco install mpv
-```
-Or download MPV from: https://sourceforge.net/projects/mpv-player-windows/files/
-
-### Installing the Radio Player
-
-```bash
-# Using pip
-pip install terminal-radio
-
-# Or using Poetry
+# Run the application
 poetry install
+poetry run terminal-radio
+```
+
+3. Without Nix (requires Python 3.10+):
+```bash
+# Install system dependencies
+# macOS
+brew install ffmpeg portaudio
+
+# Ubuntu/Debian
+sudo apt update
+sudo apt install ffmpeg portaudio19-dev
+
+# Install Python dependencies and run
+poetry install
+poetry run terminal-radio
 ```
 
 ## Usage
 
-```bash
-# Using pip installation
-terminal-radio
-
-# Or using Poetry
-poetry run radio
-```
+- Use arrow keys to navigate stations
+- Enter to select and play station
+- Space to pause/play
+- J/K to control volume
+- M to mute/unmute
+- Q to quit
 
 ## Contributing
 

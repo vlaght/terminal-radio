@@ -1,40 +1,81 @@
+from dataclasses import dataclass, asdict
 import json
 from pathlib import Path
-from typing import List, Dict
+
+from textual.widgets import ListItem, Label
+
+
+@dataclass
+class Station:
+    name: str
+    url: str
+    id: int = 0
+
+
+def station_to_dom_node(station: Station) -> ListItem:
+    item = ListItem(
+        Label(station.name),
+        id=f"station-{station.id}",
+        name=station.name,
+    )
+    item.station = station
+    return item
 
 
 class StationController:
     """Manages radio station data."""
 
     def __init__(self):
-        self.stations: List[Dict] = []
+        self._stations: dict[int, Station] = {}
+        self._next_id = 1
         self.config_path = Path.home() / ".config" / "terminal-radio" / "stations.json"
         self._load_stations()
 
     def _load_stations(self) -> None:
         """Load stations from config file."""
         if self.config_path.exists():
-            self.stations = json.loads(self.config_path.read_text())
+            data = json.loads(self.config_path.read_text())
+            for station_data in data:
+                station = Station(**station_data)
+                self._stations[station.id] = station
+            if self._stations:
+                self._next_id = max(self._stations.keys()) + 1
         else:
-            self.stations = []
+            self._stations = {}
             self._save_stations()
 
     def _save_stations(self) -> None:
         """Save stations to config file."""
         self.config_path.parent.mkdir(parents=True, exist_ok=True)
-        self.config_path.write_text(json.dumps(self.stations, indent=2))
+        data = [asdict(station) for station in self._stations.values()]
+        self.config_path.write_text(json.dumps(data, indent=2))
 
-    def add_station(self, name: str, url: str) -> None:
+    def add_station(self, name: str, url: str) -> Station:
         """Add a new station."""
-        self.stations.append({"name": name, "url": url})
+        station = Station(name=name, url=url, id=self._next_id)
+        self._stations[self._next_id] = station
+        self._next_id += 1
         self._save_stations()
+        return station
 
-    def remove_station(self, index: int) -> None:
-        """Remove a station by index."""
-        if 0 <= index < len(self.stations):
-            self.stations.pop(index)
+    def get_stations(self) -> list[Station]:
+        """Get all stations."""
+        return list(self._stations.values())
+
+    def get_station(self, station_id: int) -> Station | None:
+        """Get station by ID."""
+        return self._stations.get(station_id)
+
+    def delete_station(self, station_id: int) -> None:
+        """Delete a station by ID."""
+        if station_id in self._stations:
+            del self._stations[station_id]
             self._save_stations()
 
-    def get_stations(self) -> List[Dict]:
-        """Get all stations."""
-        return self.stations
+    def update_station(self, station_id: int, name: str, url: str) -> Station:
+        """Update an existing station."""
+        if station_id in self._stations:
+            self._stations[station_id].name = name
+            self._stations[station_id].url = url
+            self._save_stations()
+        return self._stations[station_id]

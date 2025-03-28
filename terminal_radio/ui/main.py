@@ -1,11 +1,16 @@
 from textual.app import ComposeResult
 from textual.screen import Screen
-from textual.widgets import Button, Label, ProgressBar, ListView, Footer
-from textual.containers import Container, Horizontal, Vertical
+from textual.widgets import Button, Label, ProgressBar, ListView, Footer, Static, Header
+from textual.containers import Container, Horizontal
+from terminal_radio.controllers.stations import station_to_dom_node
 
 
 class MainScreen(Screen):
     """Main application screen."""
+
+    BINDINGS = [
+        ("enter", "select_station", "Select"),
+    ]
 
     def __init__(self, player_controller, station_controller):
         super().__init__()
@@ -16,18 +21,13 @@ class MainScreen(Screen):
     def compose(self) -> ComposeResult:
         """Create child widgets for the screen."""
         yield Container(
+            Header(),
             Horizontal(
-                Button("Play", id="play", variant="success"),
-                Button("Stop", id="stop", variant="error"),
-                classes="controls",
-            ),
-            Horizontal(
-                Button("-", id="volume_down"),
-                Button("🔇", id="mute", variant="default"),
+                Label("Volume level", id="volume_label"),
                 ProgressBar(total=100, id="volume", show_eta=False),
-                Button("+", id="volume_up"),
                 classes="volume",
             ),
+            Static("No station playing", id="status_bar", classes="status"),
             ListView(id="stations"),
             classes="main",
         )
@@ -35,11 +35,18 @@ class MainScreen(Screen):
 
     def on_mount(self) -> None:
         """Load stations when screen is mounted."""
+        # Set initial volume
+        initial_volume = self.player_controller.volume
+        self.query_one("#volume", ProgressBar).progress = initial_volume
+        self.update_status("arrows to scroll stations, enter to select")
+        # Load stations
         stations = self.station_controller.get_stations()
-        self.query_one("#volume", ProgressBar).progress = self.player_controller.volume
         stations_list = self.query_one("#stations", ListView)
         for station in stations:
-            stations_list.append(station["name"])
+            item = station_to_dom_node(station)
+            stations_list.append(item)
+        self.selected_station = stations[0] if stations else None
+        stations_list.children[0].add_class("-selected")
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
         """Handle button presses."""
@@ -54,16 +61,24 @@ class MainScreen(Screen):
             self.app.action_volume_down()
         elif button_id == "mute":
             self.app.action_toggle_mute()
-            button = self.query_one("#mute", Button)
-            button.label = "🔊" if not self.player_controller.is_muted else "🔇"
 
     def on_list_view_selected(self, event: ListView.Selected) -> None:
         """Handle station selection."""
-        self.selected_station = self.station_controller.get_stations()[event.index]
+        self.selected_station = event.item.station
+        self.query("#stations > ListItem").remove_class("-selected")
+        event.item.add_class("-selected")
 
     def update_volume(self, volume: int) -> None:
         """Update the volume progress bar."""
         self.query_one("#volume", ProgressBar).progress = volume
+
+    def update_status(self, status: str | None) -> None:
+        """Update the status bar with current station."""
+        status_bar = self.query_one("#status_bar", Static)
+        if status:
+            status_bar.update(status)
+        else:
+            status_bar.update("No station playing")
 
     CSS = """
     .main {
@@ -87,17 +102,41 @@ class MainScreen(Screen):
     #volume {
         width: 100%;
     }
-
-    #mute {
-        width: 4;
+    #volume_label {
+        padding: 0 1;
+    }
+    #status_bar {
+        padding: 0 1;
     }
 
     Button {
-        margin: 1;
     }
 
     #stations {
-        height: 100%;
+        height: 1fr;  # Changed from 100% to 1fr
         border: solid $primary;
+        overflow-y: scroll;
+        width: 100%;
+        padding: 0 1;
+    }
+
+    ListView > ListItem {
+        padding: 0 2;
+    }
+
+    ListView > ListItem:hover {
+        background: $accent;
+    }
+
+    ListView > ListItem.-selected {
+        background: $primary;
+        color: $text;
+    }
+
+    .status {
+        height: 1;
+        align: center middle;
+        background: $secondary;
+        color: $text;
     }
     """
