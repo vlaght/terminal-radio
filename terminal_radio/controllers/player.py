@@ -1,4 +1,5 @@
 import threading
+import time
 import torch
 import subprocess
 import sounddevice as sd
@@ -12,6 +13,8 @@ class AudioStreamer:
         self._volume = 1.0
         self._is_playing = False
         self._thread = None
+        self._latency = 0.0
+        self._last_chunk_time = 0
 
     def play(self, url: str) -> None:
         """Start streaming audio from the given URL."""
@@ -59,8 +62,13 @@ class AudioStreamer:
         """Set the volume (0-1 range)."""
         self._volume = max(0.0, min(1.0, volume))
 
+    def get_latency(self) -> float:
+        """Get current streaming latency in milliseconds."""
+        return self._latency
+
     def _stream_audio(self) -> None:
         """Stream audio data to sounddevice."""
+
         try:
             with sd.OutputStream(
                 channels=2, samplerate=44100, dtype="float32", blocksize=4096
@@ -70,7 +78,7 @@ class AudioStreamer:
                     if not data:
                         break
 
-                    # Create a writable copy of the buffer
+                    self._last_chunk_time = time.time()
                     buffer = bytearray(data)
                     audio_data = torch.frombuffer(buffer, dtype=torch.int16).clone()
                     audio_data = audio_data.float() / 32768.0
@@ -80,8 +88,15 @@ class AudioStreamer:
                     audio_data = audio_data.view(-1, 2)
                     stream.write(audio_data.numpy())
 
+                    # Calculate latency
+                    current_time = time.time()
+                    self._latency = (
+                        current_time - self._last_chunk_time
+                    ) * 1000  # in ms
+
         except Exception as e:
             print(f"Audio streaming error: {e}")
+            self._latency = 0
         finally:
             self._is_playing = False
 
@@ -122,6 +137,11 @@ class PlayerController:
     def is_muted(self) -> bool:
         """Get mute state."""
         return self._is_muted
+
+    @property
+    def latency(self) -> float:
+        """Get current playback latency in milliseconds."""
+        return self._streamer.get_latency() if self._is_playing else 0.0
 
     async def toggle_mute(self) -> None:
         """Toggle mute state."""

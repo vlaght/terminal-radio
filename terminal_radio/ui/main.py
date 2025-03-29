@@ -11,6 +11,7 @@ from textual.widgets import (
     ListItem,
 )
 from textual.containers import Container, Horizontal
+from textual.timer import Timer
 from terminal_radio.controllers.stations import station_to_dom_node
 
 
@@ -21,6 +22,7 @@ class MainScreen(Screen):
         ("enter", "select_station", "Select"),
         ("f", "search", "Search"),  # Add new binding
     ]
+    latency_update_timer: Timer
 
     def __init__(self, player_controller, station_controller):
         super().__init__()
@@ -33,9 +35,20 @@ class MainScreen(Screen):
         yield Container(
             Header(),
             Horizontal(
-                Label("Volume level", id="volume_label"),
-                ProgressBar(total=100, id="volume", show_eta=False),
-                classes="volume",
+                Horizontal(
+                    Label("Volume level", id="volume_label"),
+                    ProgressBar(total=100, id="volume", show_eta=False),
+                    id="volume_panel",
+                ),
+                Horizontal(
+                    Label("Station Latency", id="latency_label"),
+                    Label(
+                        "0000",
+                        id="latency_digits",
+                    ),
+                    id="latency_panel",
+                ),
+                classes="top_panel",
             ),
             Static("No station playing", id="status_bar", classes="status"),
             ListView(id="stations"),
@@ -57,6 +70,7 @@ class MainScreen(Screen):
             stations_list.append(item)
         self.selected_station = stations[0] if stations else None
         stations_list.children[0].add_class("-selected")
+        self.latency_update_timer = self.set_interval(1 / 2, self.update_latency)
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
         """Handle button presses."""
@@ -103,6 +117,12 @@ class MainScreen(Screen):
         station_list.index = station_list.children.index(target_station)
         station_list.action_select_cursor()
 
+    def update_latency(self):
+        latency = self.player_controller.latency
+        value = str(int(latency)).zfill(4) if latency < 1000 else ">999"
+        label = self.query_one("#latency_digits", Label)
+        label.update(value)
+
     CSS = """
     .main {
         layout: vertical;
@@ -116,20 +136,45 @@ class MainScreen(Screen):
         align: center middle;
     }
 
-    .volume {
-        height: 3;
-        align: center middle;
+    .top_panel {
+        height: auto;
+        align: left middle;
         width: 100%;
+        margin: 1 1;
     }
 
-    #volume {
-        width: 100%;
-    }
+
     #volume_label {
         padding: 0 1;
     }
+    #volume {
+        padding: 0 1;
+        color: $accent;
+    }
+    #volume_panel {
+        border: solid $primary;
+        height: auto;
+        width: auto;
+    }
+
+    #latency_digits {
+        color: $accent;
+        align: right middle;
+        margin: 0 2;
+        padding: 0 2;
+    }
+    #latency_label {
+        padding: 0 1;
+    }
+    #latency_panel {
+        border: solid $primary;
+        height: auto;
+        width: auto;
+    }
+
     #status_bar {
         padding: 0 1;
+        margin: 1 1;
     }
 
     Button {

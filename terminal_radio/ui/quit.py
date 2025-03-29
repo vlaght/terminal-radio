@@ -2,7 +2,7 @@ import asyncio
 from textual.app import ComposeResult
 from textual.screen import ModalScreen
 from textual.widgets import Button, Label
-from textual.containers import Horizontal, Vertical
+from textual.containers import Horizontal, Vertical, Center
 
 
 class QuitScreen(ModalScreen):
@@ -10,10 +10,11 @@ class QuitScreen(ModalScreen):
 
     def compose(self) -> ComposeResult:
         yield Vertical(
-            Label("Are you sure you want to quit?", id="question"),
+            Center(Label("Are you sure you want to quit?", id="question")),
             Horizontal(
                 Button("Quit", variant="error", id="quit"),
                 Button("Cancel", variant="primary", id="cancel"),
+                id="buttons",
             ),
             id="quit_dialog",
         )
@@ -33,19 +34,26 @@ class QuitScreen(ModalScreen):
 
         #quit_dialog {
             background: $surface;
-            padding: 1;
-            width: 40;
             border: thick $error;
+            padding: 1;
+            width: 50;
+            height: 20;
+            margin: 1 2;
         }
 
         #question {
-            text-align: center;
             height: 3;
-            align: center middle;
-            margin: 0 1;
+            align-vertical: middle;
+            align-horizontal: center;
+            margin: 1 1;
+            padding: 1 1;
         }
-
+        #buttons {
+            align: center middle;
+        }
         Button {
-            margin: 0 1;
+            height: 3;
+            width: auto;
+            margin: 1 1;
         }
         """

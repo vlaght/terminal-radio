@@ -70,10 +70,10 @@ class EditStationScreen(ModalScreen):
     CSS = """
     #edit-station-dialog {
         background: $surface;
+        border: thick $accent;
         padding: 1;
         width: 60;
         height: auto;
-        border: thick $accent;
         margin: 1 2;
     }
 

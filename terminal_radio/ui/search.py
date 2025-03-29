@@ -70,12 +70,11 @@ class SearchScreen(ModalScreen[str]):
 
     def on_list_view_selected(self, event: ListView.Selected) -> None:
         """Handle station selection."""
-        # message = self.Selected(station_id=event.item.station.id)
-        self.app.main_screen.selected_station_by_id(event.item.station.id)
-        # posted = self.post_message(message)
-        # if posted:
-        #     # If the message was posted, close the screen
-        self.app.pop_screen()
+        message = self.Selected(station_id=event.item.station.id)
+        posted = self.post_message(message)
+        if posted:
+            # If the message was posted, close the screen
+            self.app.pop_screen()
 
     def key_escape(self) -> None:
         """Handle escape key press to close the search."""
