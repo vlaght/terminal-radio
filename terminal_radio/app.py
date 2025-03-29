@@ -3,6 +3,7 @@
 from textual.app import App
 from textual.widgets import ListView
 from textual.binding import Binding
+
 from terminal_radio.controllers.player import PlayerController
 from terminal_radio.controllers.stations import StationController
 from terminal_radio.ui.add_station import AddStationScreen
@@ -10,6 +11,7 @@ from terminal_radio.ui.edit_station import EditStationScreen
 from terminal_radio.ui.quit import QuitScreen
 from terminal_radio.ui.delete_station import ConfirmDeleteScreen
 from terminal_radio.ui.main import MainScreen
+from terminal_radio.ui.search import SearchScreen
 
 
 class RadioPlayerApp(App):
@@ -25,11 +27,13 @@ class RadioPlayerApp(App):
         Binding("e", "edit_station", "Edit Station", show=True),
         Binding("r", "remove_station", "Remove Station", show=True),
         Binding("m", "toggle_mute", "Mute/Unmute", show=True),
+        Binding("f", "search", "Search Stations", show=True),
     ]
 
     SCREENS = {
         "add_station": AddStationScreen,
         "quit_screen": QuitScreen,
+        "search_screen": SearchScreen,
     }
 
     def __init__(self):
@@ -89,7 +93,7 @@ class RadioPlayerApp(App):
 
     async def action_edit_station(self) -> None:
         """Edit selected station."""
-        stations = self.app.main_screen.query_one("#stations", ListView)
+        stations = self.main_screen.query_one("#stations", ListView)
         if (
             stations
             and stations.highlighted_child
@@ -127,6 +131,15 @@ class RadioPlayerApp(App):
             self.main_screen.update_status(
                 "Scroll stations with arrows, enter to select"
             )
+
+    async def action_search(self) -> None:
+        """Handle search action."""
+        stations = self.station_controller.get_stations()
+        await self.push_screen(SearchScreen(stations))
+
+    def on_search_screen_selected(self, message: SearchScreen.Selected) -> None:
+        """Handle station selection from search screen."""
+        self.main_screen.selected_station_by_id(message.station_id)
 
     async def action_request_quit(self) -> None:
         """Handle quit request."""

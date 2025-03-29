@@ -54,8 +54,17 @@ class EditStationScreen(ModalScreen):
                 await stations_list.insert(
                     index_to_replace, [station_to_dom_node(station)]
                 )
+                self.query_one("#edit-name", Input).focus()
                 self.app.main_screen.update_status(f"Station '{name}' updated")
 
+        self.app.pop_screen()
+
+    def on_mount(self) -> None:
+        """Set focus to the name input field."""
+        self.query_one("#edit-name", Input).focus()
+
+    def key_escape(self) -> None:
+        """Handle escape key press."""
         self.app.pop_screen()
 
     CSS = """

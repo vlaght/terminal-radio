@@ -63,6 +63,7 @@ poetry run terminal-radio
 - A to add stations
 - E to edit station
 - R to remove station
+- F to find stations in your list
 
 ## Contributing
 

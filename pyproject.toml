@@ -1,16 +1,18 @@
 [tool.poetry]
 name = "terminal-radio"
-version = "0.0.2"
+version = "0.0.3"
 description = "A terminal-based internet radio player"
 authors = ["Vladislav Boiko <vl4gh7@gmail.com>"]
 packages = [{include = "terminal_radio"}]
 
 [tool.poetry.dependencies]
 python = "^3.10"
-textual = "^0.52.1"
+textual = "^3.0.0"
 sounddevice = "^0.4.6"
 torch = "^2.0.0"
 numpy = "^2.2.4"
+fuzzywuzzy = "^0.18.0"
+python-levenshtein = "^0.27.1"
 
 [tool.poetry.scripts]
 terminal-radio = "terminal_radio.app:main"

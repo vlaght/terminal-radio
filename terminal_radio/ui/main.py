@@ -1,6 +1,15 @@
 from textual.app import ComposeResult
 from textual.screen import Screen
-from textual.widgets import Button, Label, ProgressBar, ListView, Footer, Static, Header
+from textual.widgets import (
+    Button,
+    Label,
+    ProgressBar,
+    ListView,
+    Footer,
+    Static,
+    Header,
+    ListItem,
+)
 from textual.containers import Container, Horizontal
 from terminal_radio.controllers.stations import station_to_dom_node
 
@@ -10,6 +19,7 @@ class MainScreen(Screen):
 
     BINDINGS = [
         ("enter", "select_station", "Select"),
+        ("f", "search", "Search"),  # Add new binding
     ]
 
     def __init__(self, player_controller, station_controller):
@@ -83,6 +93,15 @@ class MainScreen(Screen):
             status_bar.update(status)
         else:
             status_bar.update("No station playing")
+
+    def selected_station_by_id(self, station_id: str) -> None:
+        """Set the selected station by ID."""
+        station_list = self.query_one("#stations", ListView).remove_class("-selected")
+        target_station = self.query_one(f"#station-{station_id}", ListItem).add_class(
+            "-selected"
+        )
+        station_list.index = station_list.children.index(target_station)
+        station_list.action_select_cursor()
 
     CSS = """
     .main {

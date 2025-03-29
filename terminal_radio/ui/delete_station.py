@@ -1,6 +1,6 @@
 from textual.app import ComposeResult
 from textual.screen import ModalScreen
-from textual.widgets import Button, Label, ListView
+from textual.widgets import Button, Label
 from textual.containers import Horizontal, Vertical
 
 
@@ -27,18 +27,19 @@ class ConfirmDeleteScreen(ModalScreen):
         if event.button.id == "confirm":
             self.app.station_controller.delete_station(self.station.id)
             self.app.main_screen.update_status(f"Station '{self.station.name}' deleted")
-            stations_list: ListView = self.app.main_screen.query_one(
-                "#stations", ListView
-            )
-            stations_list.pop(stations_list.index) if stations_list.index else None
+            self.app.main_screen.query_one(f"#station-{self.station.id}").remove()
             self.station = None
+        self.app.pop_screen()
+
+    def key_escape(self) -> None:
+        """Handle escape key press."""
         self.app.pop_screen()
 
     CSS = """
     #confirm-dialog {
         background: $surface;
         padding: 1;
-        width: 40;
+        width: 50;
         height: auto;
         border: thick $error;
         margin: 1 2;

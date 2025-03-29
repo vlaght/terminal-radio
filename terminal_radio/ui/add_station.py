@@ -21,7 +21,7 @@ class AddStationScreen(ModalScreen):
             id="add-station-dialog",
         )
 
-    def on_button_pressed(self, event: Button.Pressed) -> None:
+    async def on_button_pressed(self, event: Button.Pressed) -> None:
         """Handle button presses."""
         if event.button.id == "save":
             name_input = self.query_one("#name", Input)
@@ -30,16 +30,27 @@ class AddStationScreen(ModalScreen):
             url = url_input.value
             if name and url:
                 station = self.app.station_controller.add_station(name, url)
-                self.app.main_screen.query_one("#stations", ListView).extend(
-                    [station_to_dom_node(station)]
+                stations_list: ListView = self.app.main_screen.query_one(
+                    "#stations", ListView
                 )
+                await stations_list.append(station_to_dom_node(station))
+
                 [
                     children.clear()
                     for children in self.query("#add-station-dialog Input")
                 ]
+                self.query_one("#name", Input).focus()
                 self.app.pop_screen()
         else:
             self.app.pop_screen()
+
+    def on_mount(self) -> None:
+        """Set focus to the name input field."""
+        self.query_one("#name", Input).focus()
+
+    def key_escape(self) -> None:
+        """Handle escape key press."""
+        self.app.pop_screen()
 
     CSS = """
     #add-station-dialog {
