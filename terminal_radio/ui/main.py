@@ -69,7 +69,8 @@ class MainScreen(Screen):
             item = station_to_dom_node(station)
             stations_list.append(item)
         self.selected_station = stations[0] if stations else None
-        stations_list.children[0].add_class("-selected")
+        if stations_list.children:
+            stations_list.children[0].add_class("-selected")
         self.latency_update_timer = self.set_interval(1 / 2, self.update_latency)
 
     def on_button_pressed(self, event: Button.Pressed) -> None:

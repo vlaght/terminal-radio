@@ -3,7 +3,8 @@
 # Terminal Radio Player
 
 A terminal-based internet radio player with station management and volume control, written by copilot slop mostly
-<img width="840" alt="screenshot" src="https://github.com/user-attachments/assets/c9a231b5-8da6-414b-911f-a1fc7a56b216" />
+<img width="840" alt="image" src="https://github.com/user-attachments/assets/179958b1-c7be-48a2-85fd-d90e05c83d51" />
+
 
 ## Installation
 
