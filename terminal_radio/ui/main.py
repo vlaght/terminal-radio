@@ -62,11 +62,15 @@ class MainScreen(Screen):
         elif button_id == "mute":
             self.app.action_toggle_mute()
 
-    def on_list_view_selected(self, event: ListView.Selected) -> None:
+    async def on_list_view_selected(self, event: ListView.Selected) -> None:
         """Handle station selection."""
         self.selected_station = event.item.station
         self.query("#stations > ListItem").remove_class("-selected")
         event.item.add_class("-selected")
+        if self.player_controller.is_playing:
+            await self.player_controller.stop_playback()
+        await self.player_controller.start_playback(self.selected_station.url)
+        self.update_status(f"Now playing: {self.selected_station.name}")
 
     def update_volume(self, volume: int) -> None:
         """Update the volume progress bar."""

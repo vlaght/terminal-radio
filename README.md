@@ -54,12 +54,15 @@ poetry run terminal-radio
 
 ## Usage
 
-- Use arrow keys to navigate stations
+- Use up & down arrow keys to navigate stations
 - Enter to select and play station
-- Space to pause/play
-- J/K to control volume
+- Space to start/stop playback
+- right & left arrows to control volume
 - M to mute/unmute
 - Q to quit
+- A to add stations
+- E to edit station
+- R to remove station
 
 ## Contributing
 

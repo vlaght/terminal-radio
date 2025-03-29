@@ -153,6 +153,9 @@ class PlayerController:
 
     async def start_playback(self, url: str = None) -> bool:
         """Start playback of the current or specified URL."""
+        if self._is_playing:
+            await self.stop_playback()
+
         try:
             if url:
                 self._current_url = url
