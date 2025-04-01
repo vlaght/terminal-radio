@@ -9,7 +9,6 @@ packages = [{include = "terminal_radio"}]
 python = "^3.10"
 textual = "^3.0.0"
 sounddevice = "^0.4.6"
-torch = "^2.0.0"
 numpy = "^2.2.4"
 fuzzywuzzy = "^0.18.0"
 python-levenshtein = "^0.27.1"

@@ -10,7 +10,7 @@ A terminal-based internet radio player with station management and volume contro
 
 ### Using Nix
 
-If you have Nix with flakes enabled:
+If you have Nix with `flakes` and `nix-command` experimental features enabled enabled:
 
 ```bash
 # Install directly
@@ -49,6 +49,7 @@ sudo apt update
 sudo apt install ffmpeg portaudio19-dev
 
 # Install Python dependencies and run
+pip install poetry
 poetry install
 poetry run terminal-radio
 ```

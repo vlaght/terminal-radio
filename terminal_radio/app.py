@@ -54,7 +54,11 @@ class RadioPlayerApp(App):
                 self.main_screen.update_status("Pause")
             else:
                 if not self.main_screen.selected_station:
-                    self.main_screen.update_status("Error: No station selected")
+                    self.notify(
+                        "select station at first",
+                        title="Not so fast",
+                        severity="warning",
+                    )
                     return
                 self.main_screen.update_status(
                     f"Loading: {self.main_screen.selected_station.name}"
@@ -68,12 +72,16 @@ class RadioPlayerApp(App):
                     if success:
                         self.main_screen.update_status(f"Now playing: {station.name}")
                     else:
-                        self.main_screen.update_status(
-                            "Error: Failed to start playback"
+                        self.notify(
+                            "Failed to start playback",
+                            title="Woopsie",
+                            severity="error",
                         )
         except Exception as e:
-            error_msg = str(e).split("\n")[0]  # Get first line of error
-            self.main_screen.update_status(f"Error: {error_msg}")
+            error_msg = str(e).split("\n")[0]
+            self.app.notify(
+                message=error_msg, title="error", severity="error", timeout=3
+            )
 
     async def action_volume_up(self) -> None:
         """Increase volume."""
@@ -120,13 +128,12 @@ class RadioPlayerApp(App):
         muted_now = await self.player_controller.toggle_mute()
         volume = self.player_controller.volume
         self.main_screen.update_volume(volume)
+        selected_station = self.main_screen.selected_station.name
         # raise NotImplementedError(self.player_controller.is_muted, self.player_controller.volume)
         if muted_now:
             self.main_screen.update_status("Muted")
-        elif not muted_now and self.player_controller.is_playing:
-            self.main_screen.update_status(
-                f"Now playing: {self.main_screen.selected_station.name}"
-            )
+        elif not muted_now and self.player_controller.is_playing and selected_station:
+            self.main_screen.update_status(f"Now playing: {selected_station.name}")
         else:
             self.main_screen.update_status(
                 "Scroll stations with arrows, enter to select"
