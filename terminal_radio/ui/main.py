@@ -13,6 +13,11 @@ from textual.widgets import (
 from textual.containers import Container, Horizontal
 from textual.timer import Timer
 from terminal_radio.controllers.stations import station_to_dom_node
+import requests
+from urllib.parse import urlparse
+from concurrent.futures import ThreadPoolExecutor
+import asyncio
+import time
 
 
 class MainScreen(Screen):
@@ -71,7 +76,7 @@ class MainScreen(Screen):
         self.selected_station = stations[0] if stations else None
         if stations_list.children:
             stations_list.children[0].add_class("-selected")
-        self.latency_update_timer = self.set_interval(1 / 2, self.update_latency)
+        self.latency_update_timer = self.set_interval(3, self.update_latency)
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
         """Handle button presses."""
@@ -94,8 +99,12 @@ class MainScreen(Screen):
         event.item.add_class("-selected")
         if self.player_controller.is_playing:
             await self.player_controller.stop_playback()
-        await self.player_controller.start_playback(self.selected_station.url)
-        self.update_status(f"Now playing: {self.selected_station.name}")
+        try:
+            await self.player_controller.start_playback(self.selected_station.url)
+        except Exception as e:
+            self.notify(str(e), title="Error", severity="error")
+        else:
+            self.update_status(f"Now playing: {self.selected_station.name}")
 
     def update_volume(self, volume: int) -> None:
         """Update the volume progress bar."""
@@ -109,7 +118,7 @@ class MainScreen(Screen):
         else:
             status_bar.update("No station playing")
 
-    def selected_station_by_id(self, station_id: str) -> None:
+    def selected_station_by_id(self, station_id: int) -> None:
         """Set the selected station by ID."""
         station_list = self.query_one("#stations", ListView).remove_class("-selected")
         target_station = self.query_one(f"#station-{station_id}", ListItem).add_class(
@@ -118,8 +127,33 @@ class MainScreen(Screen):
         station_list.index = station_list.children.index(target_station)
         station_list.action_select_cursor()
 
-    def update_latency(self):
-        latency = self.player_controller.latency
+    def measure_latency(self, url: str) -> float:
+        """Measure network latency to the station server."""
+        try:
+            parsed = urlparse(url)
+            host = parsed.netloc
+            if not host:
+                return 0.0
+
+            start_time = time.time()
+            _ = requests.head(url, timeout=2)
+            latency = (time.time() - start_time) * 1000
+            return latency
+        except Exception:
+            return 999.0
+
+    async def update_latency(self) -> None:
+        """Update latency display with actual network measurement."""
+        if not self.selected_station or not self.player_controller.is_playing:
+            self.query_one("#latency_digits", Label).update("0000")
+            return
+
+        # Run the network request in a thread pool to avoid blocking
+        with ThreadPoolExecutor() as executor:
+            latency = await asyncio.get_event_loop().run_in_executor(
+                executor, self.measure_latency, self.selected_station.url
+            )
+
         value = str(int(latency)).zfill(4) if latency < 1000 else ">999"
         label = self.query_one("#latency_digits", Label)
         label.update(value)

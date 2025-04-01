@@ -1,8 +1,13 @@
 import threading
 import time
-import torch
 import subprocess
 import sounddevice as sd
+import numpy as np
+from queue import Queue
+
+
+class AudioStreamingError(Exception):
+    pass
 
 
 class AudioStreamer:
@@ -13,8 +18,8 @@ class AudioStreamer:
         self._volume = 1.0
         self._is_playing = False
         self._thread = None
-        self._latency = 0.0
         self._last_chunk_time = 0
+        self._error_queue = Queue()
 
     def play(self, url: str) -> None:
         """Start streaming audio from the given URL."""
@@ -24,30 +29,42 @@ class AudioStreamer:
             if self._thread and self._thread.is_alive():
                 self._thread.join()
 
-        self._process = subprocess.Popen(
-            [
-                "ffmpeg",
-                "-i",
-                url,
-                "-acodec",
-                "pcm_s16le",
-                "-f",
-                "s16le",
-                "-ar",
-                "44100",
-                "-ac",
-                "2",
-                "-bufsize",
-                "4096",
-                "pipe:1",
-            ],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.DEVNULL,
-        )
+        try:
+            self._process = subprocess.Popen(
+                [
+                    "ffmpeg",
+                    "-i",
+                    url,
+                    "-acodec",
+                    "pcm_s16le",
+                    "-f",
+                    "s16le",
+                    "-ar",
+                    "44100",
+                    "-ac",
+                    "2",
+                    "-bufsize",
+                    "4096",
+                    "pipe:1",
+                ],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,  # Changed to PIPE to capture errors
+            )
+        except Exception as e:
+            raise AudioStreamingError(f"Failed to start ffmpeg process: {str(e)}")
+
         self._is_playing = True
         self._thread = threading.Thread(target=self._stream_audio)
         self._thread.daemon = True
         self._thread.start()
+
+        # Check if thread started successfully
+        time.sleep(0.1)  # Give the thread a moment to start
+        if not self._thread.is_alive():
+            self._is_playing = False
+            if not self._error_queue.empty():
+                error = self._error_queue.get()
+                raise AudioStreamingError(f"Streaming thread failed to start: {error}")
 
     def stop(self) -> None:
         """Stop streaming audio."""
@@ -62,43 +79,62 @@ class AudioStreamer:
         """Set the volume (0-1 range)."""
         self._volume = max(0.0, min(1.0, volume))
 
-    def get_latency(self) -> float:
-        """Get current streaming latency in milliseconds."""
-        return self._latency
+    def check_streaming_thread(self) -> bool:
+        """Check if streaming thread is alive and no errors occurred."""
+        if not self._error_queue.empty():
+            error = self._error_queue.get()
+            self._is_playing = False
+            raise AudioStreamingError(f"Streaming error occurred: {error}")
+        return self._thread.is_alive() if self._thread else False
 
     def _stream_audio(self) -> None:
         """Stream audio data to sounddevice."""
-
         try:
             with sd.OutputStream(
                 channels=2, samplerate=44100, dtype="float32", blocksize=4096
             ) as stream:
-                while self._is_playing and self._process and self._process.stdout:
-                    data = self._process.stdout.read(4096 * 4)  # Read larger chunks
+                while self._is_playing and self._process:
+                    # Check process status
+                    if self._process.poll() is not None:
+                        stderr = self._process.stderr.read().decode(
+                            "utf-8", errors="ignore"
+                        )
+                        raise AudioStreamingError(
+                            f"FFmpeg process terminated unexpectedly: {stderr}"
+                        )
+
+                    data = self._process.stdout.read(
+                        4096 * 4
+                    )  # Reading 16-bit PCM data
+
                     if not data:
+                        if self._process.poll() is not None:
+                            stderr = self._process.stderr.read().decode(
+                                "utf-8", errors="ignore"
+                            )
+                            raise AudioStreamingError(
+                                f"Stream ended unexpectedly: {stderr}"
+                            )
                         break
 
-                    self._last_chunk_time = time.time()
-                    buffer = bytearray(data)
-                    audio_data = torch.frombuffer(buffer, dtype=torch.int16).clone()
-                    audio_data = audio_data.float() / 32768.0
-                    audio_data = audio_data * self._volume
-
-                    # Reshape for stereo
-                    audio_data = audio_data.view(-1, 2)
-                    stream.write(audio_data.numpy())
-
-                    # Calculate latency
-                    current_time = time.time()
-                    self._latency = (
-                        current_time - self._last_chunk_time
-                    ) * 1000  # in ms
+                    try:
+                        buffer = bytearray(data)
+                        # Convert from 16-bit PCM to float32
+                        audio_data = np.frombuffer(buffer, dtype=np.int16)
+                        audio_data = (
+                            audio_data.astype(np.float32) / 32768.0 * self._volume
+                        )
+                        audio_data = audio_data.reshape(-1, 2)
+                        stream.write(audio_data)
+                    except Exception as e:
+                        raise AudioStreamingError(f"Audio processing error: {str(e)}")
 
         except Exception as e:
-            print(f"Audio streaming error: {e}")
-            self._latency = 0
+            self._error_queue.put(str(e))
         finally:
             self._is_playing = False
+            if self._process:
+                self._process.terminate()
 
     def cleanup(self) -> None:
         """Clean up resources before shutdown."""
@@ -138,12 +174,7 @@ class PlayerController:
         """Get mute state."""
         return self._is_muted
 
-    @property
-    def latency(self) -> float:
-        """Get current playback latency in milliseconds."""
-        return self._streamer.get_latency() if self._is_playing else 0.0
-
-    async def toggle_mute(self) -> None:
+    async def toggle_mute(self) -> bool:
         """Toggle mute state."""
         if not self._is_muted:
             self._pre_mute_volume = self._volume
@@ -171,23 +202,24 @@ class PlayerController:
             if not self._is_muted:
                 self._streamer.set_volume(self._volume / 100.0)
 
-    async def start_playback(self, url: str = None) -> bool:
+    async def start_playback(self, url: str) -> bool:
         """Start playback of the current or specified URL."""
-        if self._is_playing:
-            await self.stop_playback()
-
         try:
+            if self._is_playing:
+                await self.stop_playback()
             if url:
                 self._current_url = url
             if self._current_url:
-                self._streamer.set_volume(self._volume / 100.0)  # Convert to 0-1 range
+                self._streamer.set_volume(self._volume / 100.0)
                 self._streamer.play(self._current_url)
                 self._is_playing = True
+                # Verify streaming started successfully
+                self._streamer.check_streaming_thread()
                 return True
             return False
-        except Exception as e:
-            print(f"Playback error: {e}")
-            return False
+        except AudioStreamingError:
+            self._is_playing = False
+            raise  # Re-raise the error to be handled by the UI layer
 
     async def stop_playback(self) -> None:
         """Stop playback."""
