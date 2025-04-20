@@ -20,6 +20,12 @@ class AudioStreamer:
         self._thread = None
         self._last_chunk_time = 0
         self._error_queue = Queue()
+        self._current_audio_data = np.ndarray([0] * 32)
+
+    @property
+    def current_audio_data(self) -> np.ndarray | None:
+        """Get current audio data for visualization."""
+        return self._current_audio_data
 
     def play(self, url: str) -> None:
         """Start streaming audio from the given URL."""
@@ -74,6 +80,7 @@ class AudioStreamer:
         if self._process:
             self._process.terminate()
             self._process = None
+        self._current_audio_data = None
 
     def set_volume(self, volume: float) -> None:
         """Set the volume (0-1 range)."""
@@ -125,6 +132,10 @@ class AudioStreamer:
                             audio_data.astype(np.float32) / 32768.0 * self._volume
                         )
                         audio_data = audio_data.reshape(-1, 2)
+
+                        # Store current audio data for visualization
+                        self._current_audio_data = audio_data
+
                         stream.write(audio_data)
                     except Exception as e:
                         raise AudioStreamingError(f"Audio processing error: {str(e)}")
@@ -232,3 +243,7 @@ class PlayerController:
         if self._is_playing:
             await self.stop_playback()
         self._streamer.cleanup()
+
+    def get_current_audio_data(self) -> np.ndarray | None:
+        """Get current audio data for visualization."""
+        return self._streamer.current_audio_data

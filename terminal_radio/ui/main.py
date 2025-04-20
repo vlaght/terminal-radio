@@ -18,6 +18,7 @@ from urllib.parse import urlparse
 from concurrent.futures import ThreadPoolExecutor
 import asyncio
 import time
+from terminal_radio.ui.widgets.spectrum import SpectrumVisualizer
 
 
 class MainScreen(Screen):
@@ -53,6 +54,10 @@ class MainScreen(Screen):
                     ),
                     id="latency_panel",
                 ),
+                Horizontal(
+                    SpectrumVisualizer(summary_function=max),
+                    id="sparkline",
+                ),
                 classes="top_panel",
             ),
             Static("No station playing", id="status_bar", classes="status"),
@@ -77,6 +82,7 @@ class MainScreen(Screen):
         if stations_list.children:
             stations_list.children[0].add_class("-selected")
         self.latency_update_timer = self.set_interval(3, self.update_latency)
+        self.set_interval(0.05, self.update_spectrum)  # 20fps update rate
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
         """Handle button presses."""
@@ -158,6 +164,13 @@ class MainScreen(Screen):
         label = self.query_one("#latency_digits", Label)
         label.update(value)
 
+    async def update_spectrum(self) -> None:
+        """Update spectrum visualization."""
+        audio_data = self.player_controller.get_current_audio_data()
+        spectrum = self.query_one(SpectrumVisualizer)
+        if audio_data is not None:
+            spectrum.update_spectrum(audio_data)
+
     CSS = """
     .main {
         layout: vertical;
@@ -195,8 +208,8 @@ class MainScreen(Screen):
     #latency_digits {
         color: $accent;
         align: right middle;
-        margin: 0 2;
-        padding: 0 2;
+        margin: 0 1;
+        padding: 0 1;
     }
     #latency_label {
         padding: 0 1;
@@ -241,5 +254,14 @@ class MainScreen(Screen):
         align: center middle;
         background: $secondary;
         color: $text;
+    }
+
+    #sparkline {
+        border: solid $primary;
+        color: $accent;
+        height: 3;
+        margin: 0 1;
+        padding: 0 1;
+        width: 20%;
     }
     """
