@@ -1,8 +1,9 @@
 from dataclasses import dataclass, asdict
 import json
-from pathlib import Path
 
 from textual.widgets import ListItem, Label
+
+from terminal_radio.controllers.options import OptionsController
 
 
 @dataclass
@@ -28,7 +29,7 @@ class StationController:
     def __init__(self):
         self._stations: dict[int, Station] = {}
         self._next_id = 1
-        self.config_path = Path.home() / ".config" / "terminal-radio" / "stations.json"
+        self.config_path = OptionsController.DEFAULT_CONFIG_DIR / "stations.json"
         self._load_stations()
 
     def _load_stations(self) -> None:

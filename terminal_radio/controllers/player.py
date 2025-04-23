@@ -21,6 +21,7 @@ class AudioStreamer:
         self._last_chunk_time = 0
         self._error_queue = Queue()
         self._current_audio_data = np.ndarray([0] * 32)
+        self.output_device = sd.default.device[0]
 
     @property
     def current_audio_data(self) -> np.ndarray:
@@ -98,7 +99,10 @@ class AudioStreamer:
         """Stream audio data to sounddevice."""
         try:
             with sd.OutputStream(
-                channels=2, samplerate=44100, dtype="float32", blocksize=4096
+                channels=2,
+                samplerate=44100,
+                dtype="float32",
+                blocksize=4096,
             ) as stream:
                 while self._is_playing and self._process:
                     # Check process status
@@ -251,3 +255,15 @@ class PlayerController:
     def get_current_audio_data(self) -> np.ndarray:
         """Get current audio data for visualization."""
         return self._streamer.current_audio_data
+
+    def set_output_device(self, device: int) -> None:
+        """Set the output device for audio playback."""
+        sd.default.device = device
+
+    def get_output_device(self) -> int:
+        """Get the current output device."""
+        return (
+            sd.default.device[0]
+            if isinstance(sd.default.device, tuple)
+            else sd.default.device
+        )

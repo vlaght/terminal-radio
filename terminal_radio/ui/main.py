@@ -13,7 +13,9 @@ from textual.widgets import (
 )
 from textual.containers import Container, Horizontal
 from textual.timer import Timer
-from terminal_radio.controllers.stations import station_to_dom_node
+from terminal_radio.controllers.options import OptionsController
+from terminal_radio.controllers.player import PlayerController
+from terminal_radio.controllers.stations import StationController, station_to_dom_node
 import requests
 from urllib.parse import urlparse
 from concurrent.futures import ThreadPoolExecutor
@@ -25,16 +27,27 @@ from terminal_radio.ui.widgets.spectrum import SpectrumVisualizer
 class MainScreen(Screen):
     """Main application screen."""
 
+    options_controller: OptionsController
+    player_controller: PlayerController
+    station_controller: StationController
+
     BINDINGS = [
         ("enter", "select_station", "Select"),
         ("f", "search", "Search"),  # Add new binding
     ]
     latency_update_timer: Timer
 
-    def __init__(self, player_controller, station_controller):
+    def __init__(
+        self,
+        player_controller: PlayerController,
+        station_controller: StationController,
+        options_controller: OptionsController,
+    ):
         super().__init__()
+        self.options_controller = OptionsController()
         self.player_controller = player_controller
         self.station_controller = station_controller
+        self.options_controller = options_controller
         self.selected_station = None
 
     def compose(self) -> ComposeResult:
@@ -66,6 +79,13 @@ class MainScreen(Screen):
             id="main",
         )
         yield Footer()
+        # check wethet there are available output devices
+        if not self.options_controller.get_available_devices():
+            self.notify(
+                "No available output devices found. Please check your audio settings.",
+                title="Error",
+                severity="error",
+            )
 
     def on_mount(self) -> None:
         """Load stations when screen is mounted."""

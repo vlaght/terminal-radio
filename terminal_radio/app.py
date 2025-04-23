@@ -4,13 +4,16 @@ import logging
 from textual.app import App
 from textual.widgets import ListView
 from textual.binding import Binding
+from textual import on
 
 from terminal_radio.controllers.log import LogController
+from terminal_radio.controllers.options import OptionsController
 from terminal_radio.controllers.player import PlayerController
 from terminal_radio.controllers.stations import StationController
 from terminal_radio.ui.add_station import AddStationScreen
 from terminal_radio.ui.edit_station import EditStationScreen
 from terminal_radio.ui.log import LogScreen
+from terminal_radio.ui.options import OptionsScreen
 from terminal_radio.ui.quit import QuitScreen
 from terminal_radio.ui.delete_station import ConfirmDeleteScreen
 from terminal_radio.ui.main import MainScreen
@@ -32,12 +35,14 @@ class RadioPlayerApp(App):
         Binding("m", "toggle_mute", "Mute/Unmute", show=True),
         Binding("f", "search", "Search Stations", show=True),
         Binding("l", "log", "Log", show=True),
+        Binding("o", "options_screen", "Options", show=True),
     ]
 
     SCREENS = {
         "add_station": AddStationScreen,
         "quit_screen": QuitScreen,
         "search_screen": SearchScreen,
+        "options_screen": OptionsScreen,
     }
 
     def __init__(self):
@@ -45,12 +50,18 @@ class RadioPlayerApp(App):
         self.player_controller = PlayerController()
         self.station_controller = StationController()
         self.log_controller = LogController()
+        self.options_controller = OptionsController()
 
     async def on_mount(self) -> None:
         """Called when app is mounted."""
-        self.main_screen = MainScreen(self.player_controller, self.station_controller)
+        self.main_screen = MainScreen(
+            player_controller=self.player_controller,
+            station_controller=self.station_controller,
+            options_controller=self.options_controller,
+        )
         await self.push_screen(self.main_screen)
         self.log_controller.log(logging.DEBUG, "App mounted")
+        self.theme = self.options_controller.options.theme
 
     async def action_toggle_playback(self) -> None:
         """Toggle playback state."""
@@ -168,6 +179,34 @@ class RadioPlayerApp(App):
     async def action_request_quit(self) -> None:
         """Handle quit request."""
         await self.push_screen("quit_screen")
+
+    async def action_options_screen(self) -> None:
+        """Handle options screen action."""
+        await self.push_screen(
+            OptionsScreen(options_controller=self.options_controller),
+        )
+
+    @on(OptionsScreen.CONFIG_UPDATED_EVENT)
+    async def handle_options_update(
+        self, event: OptionsScreen.CONFIG_UPDATED_EVENT
+    ) -> None:
+        self.app.log_controller.log(
+            logging.DEBUG,
+            "Options updated",
+        )
+        if (
+            self.options_controller.options.output_device
+            != self.player_controller.get_output_device()
+        ):
+            await self.player_controller.stop_playback()
+            self.player_controller.set_output_device(
+                self.options_controller.options.output_device,
+            )
+            await self.player_controller.start_playback(
+                self.main_screen.selected_station.url
+            )
+        if self.options_controller.options.theme != self.app.theme:
+            self.app.theme = self.options_controller.options.theme
 
 
 def main() -> None:

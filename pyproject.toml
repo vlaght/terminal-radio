@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "terminal-radio"
-version = "0.0.5"
+version = "0.0.6"
 description = "A terminal-based internet radio player"
 authors = ["Vladislav Boiko <vl4gh7@gmail.com>"]
 packages = [{include = "terminal_radio"}]
