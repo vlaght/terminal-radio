@@ -17,8 +17,8 @@ class LogScreen(ModalScreen):
 
     def compose(self) -> ComposeResult:
         log = Log(name="log", id="log")
-        log.BORDER_TITLE = "Log"
-        log.BORDER_SUBTITLE = "Press 'ESC' to close"
+        log.border_title = "Log"
+        log.border_subtitle = "Press 'ESC' to close"
         layout = Vertical(
             log,
             id="log-window",
