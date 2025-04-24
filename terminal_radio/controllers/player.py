@@ -23,7 +23,7 @@ class AudioStreamer:
         self._current_audio_data = np.ndarray([0] * 32)
 
     @property
-    def current_audio_data(self) -> np.ndarray | None:
+    def current_audio_data(self) -> np.ndarray:
         """Get current audio data for visualization."""
         return self._current_audio_data
 
@@ -80,7 +80,7 @@ class AudioStreamer:
         if self._process:
             self._process.terminate()
             self._process = None
-        self._current_audio_data = None
+        self._current_audio_data = np.ndarray([0] * 32)
 
     def set_volume(self, volume: float) -> None:
         """Set the volume (0-1 range)."""
@@ -102,7 +102,9 @@ class AudioStreamer:
             ) as stream:
                 while self._is_playing and self._process:
                     # Check process status
-                    if self._process.poll() is not None:
+                    if not self._process:
+                        raise AudioStreamingError("FFmpeg process not found")
+                    elif self._process.poll() is not None:
                         stderr = self._process.stderr.read().decode(
                             "utf-8", errors="ignore"
                         )
@@ -115,7 +117,9 @@ class AudioStreamer:
                     )  # Reading 16-bit PCM data
 
                     if not data:
-                        if self._process.poll() is not None:
+                        if not self._process:
+                            raise AudioStreamingError("FFmpeg process not found")
+                        elif self._process.poll() is not None:
                             stderr = self._process.stderr.read().decode(
                                 "utf-8", errors="ignore"
                             )
@@ -244,6 +248,6 @@ class PlayerController:
             await self.stop_playback()
         self._streamer.cleanup()
 
-    def get_current_audio_data(self) -> np.ndarray | None:
+    def get_current_audio_data(self) -> np.ndarray:
         """Get current audio data for visualization."""
         return self._streamer.current_audio_data

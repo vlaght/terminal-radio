@@ -54,7 +54,6 @@ class SpectrumVisualizer(Sparkline):
         # Apply log scaling to compress dynamic range
         spectrum = np.log10(np.array(spectrum) + 1)
         # Normalize
-        max_val = max(spectrum) if max(spectrum) > 0 else 1
-        spectrum = [min(s / max_val, 1.0) for s in spectrum]
-
+        max_val = float(max(spectrum)) if max(spectrum) > 0 else 1.0
+        spectrum = [max(0.0, min(float(value) / max_val, 1.0)) for value in spectrum]
         self.data = spectrum

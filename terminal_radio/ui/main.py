@@ -1,3 +1,4 @@
+import logging
 from textual.app import ComposeResult
 from textual.screen import Screen
 from textual.widgets import (
@@ -39,7 +40,7 @@ class MainScreen(Screen):
     def compose(self) -> ComposeResult:
         """Create child widgets for the screen."""
         yield Container(
-            Header(),
+            Header(id="header"),
             Horizontal(
                 Horizontal(
                     Label("Volume level", id="volume_label"),
@@ -55,14 +56,14 @@ class MainScreen(Screen):
                     id="latency_panel",
                 ),
                 Horizontal(
-                    SpectrumVisualizer(summary_function=max),
-                    id="sparkline",
+                    SpectrumVisualizer(summary_function=max, id="sparkline"),
+                    id="sparkline_box",
                 ),
                 classes="top_panel",
             ),
             Static("No station playing", id="status_bar", classes="status"),
             ListView(id="stations"),
-            classes="main",
+            id="main",
         )
         yield Footer()
 
@@ -108,7 +109,11 @@ class MainScreen(Screen):
         try:
             await self.player_controller.start_playback(self.selected_station.url)
         except Exception as e:
-            self.notify(str(e), title="Error", severity="error")
+            self.notify("Some error happened, see log", title="Error", severity="error")
+            self.app.log_controller.log(
+                logging.ERROR,
+                f"Failed to start playback: {str(e)}",
+            )
         else:
             self.update_status(f"Now playing: {self.selected_station.name}")
 
@@ -172,25 +177,22 @@ class MainScreen(Screen):
             spectrum.update_spectrum(audio_data)
 
     CSS = """
-    .main {
+    #main {
         layout: vertical;
         background: $surface;
-        padding: 1;
         height: 100%;
+        width: 100%;
     }
-
-    .controls {
-        height: 3;
-        align: center middle;
+    #header {
+        width: 100%;
     }
-
     .top_panel {
         height: auto;
         align: left middle;
         width: 100%;
         margin: 1 1;
+        scrollbar-size: 0 0;
     }
-
 
     #volume_label {
         padding: 0 1;
@@ -221,47 +223,43 @@ class MainScreen(Screen):
     }
 
     #status_bar {
-        padding: 0 1;
+        height: 1;
+        align: center middle;
+        background: $primary;
+        color: $text;
         margin: 1 1;
+        padding: 0 1;
+        width: 100%;
     }
-
-    Button {
-    }
-
     #stations {
-        height: 1fr;  # Changed from 100% to 1fr
+        height: 1fr;
         border: solid $primary;
         overflow-y: scroll;
+        scrollbar-size: 0 0;
+        margin: 0 1;
         width: 100%;
-        padding: 0 1;
     }
-
     ListView > ListItem {
         padding: 0 2;
     }
-
     ListView > ListItem:hover {
         background: $accent;
     }
-
     ListView > ListItem.-selected {
-        background: $primary;
+        background: $accent;
         color: $text;
     }
-
-    .status {
-        height: 1;
-        align: center middle;
-        background: $secondary;
-        color: $text;
-    }
-
-    #sparkline {
+    #sparkline_box {
         border: solid $primary;
-        color: $accent;
         height: 3;
         margin: 0 1;
         padding: 0 1;
         width: 20%;
+    }
+    #sparkline > .sparkline--max-color {
+        color: $accent;
+    }
+    #sparkline > .sparkline--min-color {
+        color: $accent 20%;
     }
     """

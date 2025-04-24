@@ -1,13 +1,16 @@
 # app.py
 
+import logging
 from textual.app import App
 from textual.widgets import ListView
 from textual.binding import Binding
 
+from terminal_radio.controllers.log import LogController
 from terminal_radio.controllers.player import PlayerController
 from terminal_radio.controllers.stations import StationController
 from terminal_radio.ui.add_station import AddStationScreen
 from terminal_radio.ui.edit_station import EditStationScreen
+from terminal_radio.ui.log import LogScreen
 from terminal_radio.ui.quit import QuitScreen
 from terminal_radio.ui.delete_station import ConfirmDeleteScreen
 from terminal_radio.ui.main import MainScreen
@@ -28,6 +31,7 @@ class RadioPlayerApp(App):
         Binding("r", "remove_station", "Remove Station", show=True),
         Binding("m", "toggle_mute", "Mute/Unmute", show=True),
         Binding("f", "search", "Search Stations", show=True),
+        Binding("l", "log", "Log", show=True),
     ]
 
     SCREENS = {
@@ -40,11 +44,13 @@ class RadioPlayerApp(App):
         super().__init__()
         self.player_controller = PlayerController()
         self.station_controller = StationController()
+        self.log_controller = LogController()
 
     async def on_mount(self) -> None:
         """Called when app is mounted."""
         self.main_screen = MainScreen(self.player_controller, self.station_controller)
         await self.push_screen(self.main_screen)
+        self.log_controller.log(logging.DEBUG, "App mounted")
 
     async def action_toggle_playback(self) -> None:
         """Toggle playback state."""
@@ -72,16 +78,22 @@ class RadioPlayerApp(App):
                     if success:
                         self.main_screen.update_status(f"Now playing: {station.name}")
                     else:
+                        msg = "Failed to start playback"
                         self.notify(
-                            "Failed to start playback",
+                            msg,
                             title="Woopsie",
                             severity="error",
                         )
+                        self.app.log_controller.log(logging.ERROR, msg)
         except Exception as e:
             error_msg = str(e).split("\n")[0]
             self.app.notify(
-                message=error_msg, title="error", severity="error", timeout=3
+                message=error_msg[:50],
+                title="error",
+                severity="error",
+                timeout=3,
             )
+            self.app.log_controller.log(logging.ERROR, error_msg)
 
     async def action_volume_up(self) -> None:
         """Increase volume."""
@@ -143,6 +155,11 @@ class RadioPlayerApp(App):
         """Handle search action."""
         stations = self.station_controller.get_stations()
         await self.push_screen(SearchScreen(stations))
+
+    async def action_log(self) -> None:
+        """Handle log action."""
+        log = self.app.log_controller.get_log()
+        await self.push_screen(LogScreen(log))
 
     def on_search_screen_selected(self, message: SearchScreen.Selected) -> None:
         """Handle station selection from search screen."""
