@@ -10,6 +10,12 @@ class Options:
     theme: str = "textual-dark"
 
 
+class NoAudioDeviceError(Exception):
+    """Custom exception for no audio device found."""
+
+    pass
+
+
 class OptionsController:
     DEFAULT_CONFIG_DIR = Path.home() / ".config" / "terminal-radio"
     DEFAULT_CONFIG_PATH = DEFAULT_CONFIG_DIR / "options.json"
@@ -51,7 +57,10 @@ class OptionsController:
     @classmethod
     def get_available_devices(cls) -> list[tuple[str, int]]:
         """Get a list of available audio devices."""
-        devices = sd.query_devices(kind="output")
+        try:
+            devices = sd.query_devices(kind="output")
+        except sd.PortAudioError as exc:
+            raise NoAudioDeviceError("No audio device found.") from exc
         return (
             [(device["name"], device["index"]) for device in devices]
             if isinstance(devices, tuple)

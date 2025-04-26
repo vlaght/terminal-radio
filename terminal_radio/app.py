@@ -195,17 +195,19 @@ class RadioPlayerApp(App):
             "Options updated",
         )
         if (
-            self.options_controller.options.output_device
+            self.options_controller.options.output_device is not None
+            and self.options_controller.options.output_device
             != self.player_controller.get_output_device()
         ):
             was_playing = False
             if self.player_controller.is_playing:
                 await self.player_controller.stop_playback()
                 was_playing = True
+
             self.player_controller.set_output_device(
                 self.options_controller.options.output_device,
             )
-            if was_playing:
+            if was_playing and self.main_screen.selected_station:
                 await self.player_controller.start_playback(
                     self.main_screen.selected_station.url
                 )

@@ -13,7 +13,7 @@ from textual.widgets import (
 )
 from textual.containers import Container, Horizontal
 from textual.timer import Timer
-from terminal_radio.controllers.options import OptionsController
+from terminal_radio.controllers.options import NoAudioDeviceError, OptionsController
 from terminal_radio.controllers.player import PlayerController
 from terminal_radio.controllers.stations import StationController, station_to_dom_node
 import requests
@@ -80,12 +80,15 @@ class MainScreen(Screen):
         )
         yield Footer()
         # check wethet there are available output devices
-        if not self.options_controller.get_available_devices():
+        try:
+            _ = self.options_controller.get_available_devices()
+        except NoAudioDeviceError as exc:
             self.notify(
                 "No available output devices found. Please check your audio settings.",
                 title="Error",
                 severity="error",
             )
+            self.log_controller.log(logging.ERROR, exc)
 
     def on_mount(self) -> None:
         """Load stations when screen is mounted."""
